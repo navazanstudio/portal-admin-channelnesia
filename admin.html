@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Admin | Redaksi Channelnesia</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { navy: '#1a1b4b', blue: '#0ea5e9', red: '#e63946', gray: '#f3f4f6' }
+                    },
+                    fontFamily: {
+                        'logo': ['"Montserrat"', 'sans-serif'],
+                        'sans': ['"Montserrat"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Modifikasi Editor.js (Fix Lebar Kanvas) */
+        .ce-block__content, .ce-toolbar__content { 
+            max-width: calc(100% - 100px) !important; 
+            margin: 0 auto !important;
+        }
+        @media (max-width: 768px) {
+            .ce-block__content, .ce-toolbar__content { max-width: calc(100% - 60px) !important; }
+        }
+
+        .ce-paragraph { font-size: 1.05rem; line-height: 1.75rem; color: #374151; }
+        .ce-header { font-weight: 800; color: #1a1b4b; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Hilangkan panah spinner di input type number */
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased flex h-screen overflow-hidden">
+
+    <div id="mobile-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-brand-navy/60 z-40 hidden md:hidden backdrop-blur-sm transition-opacity opacity-0"></div>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside id="sidebar" class="w-64 bg-[#1a1b4b] text-white border-r border-[#2a2c6b] flex flex-col fixed md:relative z-50 h-full transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex-shrink-0">
+        <div class="p-6 border-b border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/5 transition">
+            <div class="text-2xl font-logo tracking-tighter leading-none">
+                <span class="font-medium text-white">CH</span><span class="font-black bg-gradient-to-r from-[#0ea5e9] to-[#e63946] bg-clip-text text-transparent tracking-tight">ADMIN.</span>
+            </div>
+            <button onclick="toggleSidebar(); event.stopPropagation();" class="md:hidden text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        
+        <div class="p-6 border-b border-white/10 bg-white/5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0ea5e9] to-[#e63946] flex items-center justify-center text-white font-bold shadow-md">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p id="sidebar-user-name" class="text-sm font-bold truncate">Admin Redaksi</p>
+                    <p class="text-[9px] text-[#0ea5e9] font-bold uppercase tracking-widest mt-0.5">Super User</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 flex flex-col gap-2 overflow-y-auto">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2 mb-2 mt-2">Main Menu</p>
+            <button onclick="switchMenu('beranda')" id="menu-beranda" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 bg-brand-blue text-white shadow-md">
+                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard
+            </button>
+            <button onclick="switchMenu('pengajuan')" id="menu-pengajuan" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 text-gray-400 hover:bg-white/10 hover:text-white relative">
+                <i class="fa-solid fa-inbox w-5 text-center"></i> Daftar Pengajuan
+                <span id="badge-pengajuan" class="absolute right-3 bg-brand-red text-white text-[10px] px-2 py-0.5 rounded-full hidden">0</span>
+            </button>
+            <button onclick="switchMenu('artikel')" id="menu-artikel" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 text-gray-400 hover:bg-white/10 hover:text-white relative">
+                <i class="fa-solid fa-layer-group w-5 text-center"></i> Data Artikel (Live)
+                <span id="badge-expired" class="absolute right-3 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full hidden">!</span>
+            </button>
+            <button onclick="switchMenu('analytics')" id="menu-analytics" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 text-gray-400 hover:bg-white/10 hover:text-white">
+                <i class="fa-solid fa-chart-line w-5 text-center"></i> Analytics & Views
+            </button>
+            <button onclick="switchMenu('report')" id="menu-report" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 text-gray-400 hover:bg-white/10 hover:text-white">
+                <i class="fa-solid fa-file-export w-5 text-center"></i> Laporan Bulanan
+            </button>
+        </nav>
+
+        <!-- TOMBOL LOGOUT ADMIN -->
+        <div class="p-4 border-t border-white/10 bg-white/5">
+            <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl text-gray-400 hover:bg-red-500/20 hover:text-brand-red transition-all duration-300">
+                <i class="fa-solid fa-right-from-bracket w-5 text-center"></i> Keluar Akses
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50 relative">
+        <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-10 shadow-sm">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-500 hover:text-brand-navy focus:outline-none"><i class="fa-solid fa-bars text-xl"></i></button>
+                <h1 id="topbar-title" class="font-bold text-lg text-brand-navy tracking-tight">Dashboard Admin</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden sm:block text-xs font-semibold text-gray-400" id="current-date"></div>
+            </div>
+        </header>
+
+        <!-- WRAPPER -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+            
+            <!-- ================= VIEW: BERANDA ================= -->
+            <div id="view-beranda" class="block animate-fade-in max-w-7xl mx-auto">
+                <div class="mb-6 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-64 h-full bg-gradient-to-l from-brand-blue/10 to-transparent pointer-events-none"></div>
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-extrabold text-brand-navy mb-2">Selamat Datang Admin Redaksi!</h2>
+                        <p class="text-sm text-gray-500 font-medium">Ini adalah ringkasan seluruh performa dan pengajuan berita dari kontributor.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Menunggu Review</p>
+                        <h3 id="stat-wait" class="text-3xl font-black text-yellow-500">0</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Diterima (Proses)</p>
+                        <h3 id="stat-acc" class="text-3xl font-black text-brand-blue">0</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-green-50 text-6xl"><i class="fa-solid fa-globe"></i></div>
+                        <p class="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-1 relative z-10">Data Live (Publish)</p>
+                        <h3 id="stat-pub" class="text-3xl font-black text-green-500 relative z-10">0</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Ditolak</p>
+                        <h3 id="stat-rej" class="text-3xl font-black text-brand-red">0</h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 class="font-extrabold text-brand-navy mb-1">Grafik Kategori (Artikel Live)</h3>
+                    <p class="text-xs text-gray-500 mb-6">Distribusi berdasarkan artikel yang sudah dipublikasikan.</p>
+                    <div class="w-full max-w-2xl mx-auto h-64 md:h-80">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW: DAFTAR PENGAJUAN ================= -->
+            <div id="view-pengajuan" class="hidden animate-fade-in max-w-7xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div>
+                            <h3 class="font-extrabold text-brand-navy">Antrean Pengajuan Berita</h3>
+                            <p class="text-xs text-gray-500 mt-1">Hanya menampilkan berita yang belum tayang. (Draft jurnalis disembunyikan)</p>
+                        </div>
+                        <button onclick="loadAdminTable()" class="text-gray-400 hover:text-brand-blue transition"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                    </div>
+                    <div class="overflow-x-auto min-h-[400px]">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                    <th class="px-6 py-4">Judul Artikel</th>
+                                    <th class="px-6 py-4">ID Penulis</th>
+                                    <th class="px-6 py-4">Waktu Pengajuan</th>
+                                    <th class="px-6 py-4">Ubah Status</th>
+                                    <th class="px-6 py-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabel-admin-pengajuan" class="text-sm font-medium text-gray-700 divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW: DATA ARTIKEL (LIVE) ================= -->
+            <div id="view-artikel" class="hidden animate-fade-in max-w-7xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    
+                    <!-- HEADER TABEL LIVE DENGAN SEARCH & FILTER -->
+                    <div class="px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-green-50/30">
+                        <div>
+                            <h3 class="font-extrabold text-green-700"><i class="fa-solid fa-globe mr-2"></i>Database Artikel Live</h3>
+                            <p class="text-xs text-gray-500 mt-1">Berita yang ada di tabel ini sedang tayang di web utama Channelnesia.</p>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                            <!-- Input Search -->
+                            <div class="relative w-full sm:w-64">
+                                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                                <input type="text" id="search-live" oninput="filterLiveTable()" placeholder="Cari judul artikel..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-brand-navy focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition shadow-sm bg-white">
+                            </div>
+                            
+                            <!-- Dropdown Filter -->
+                            <select id="filter-type-live" onchange="filterLiveTable()" class="w-full sm:w-auto border border-gray-200 rounded-xl text-sm font-bold text-gray-600 px-4 py-2 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 bg-white cursor-pointer shadow-sm transition">
+                                <option value="all">Semua Jenis</option>
+                                <option value="regular">Regular</option>
+                                <option value="express">Express</option>
+                            </select>
+
+                            <!-- Tombol Refresh -->
+                            <button onclick="loadAdminTable()" class="w-full sm:w-auto text-gray-500 hover:text-green-600 transition px-4 py-2 bg-white border border-gray-200 rounded-xl shadow-sm flex items-center justify-center gap-2 font-bold text-sm hover:bg-green-50">
+                                <i class="fa-solid fa-rotate-right"></i> <span class="sm:hidden">Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto min-h-[400px]">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                    <th class="px-6 py-4">Judul Artikel Tayang</th>
+                                    <th class="px-6 py-4">Kategori</th>
+                                    <!-- KOLOM BARU: JENIS -->
+                                    <th class="px-6 py-4">Jenis</th>
+                                    <th class="px-6 py-4">Tgl Tayang</th>
+                                    <th class="px-6 py-4 text-center">Status</th>
+                                    <th class="px-6 py-4 text-right">Aksi Manajerial</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabel-artikel-live" class="text-sm font-medium text-gray-700 divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW: ANALYTICS ================= -->
+            <div id="view-analytics" class="hidden animate-fade-in max-w-7xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                        <h3 class="font-extrabold text-brand-navy">Top Ranking Artikel (Live)</h3>
+                        <p class="text-xs text-gray-500 mt-1">Performa berdasarkan artikel yang sudah dipublikasikan.</p>
+                    </div>
+                    <div class="overflow-x-auto min-h-[400px]">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                    <th class="px-6 py-4">Peringkat</th>
+                                    <th class="px-6 py-4">Judul Artikel</th>
+                                    <th class="px-6 py-4">Kategori</th>
+                                    <th class="px-6 py-4">Total Views <i class="fa-solid fa-eye ml-1"></i></th>
+                                    <th class="px-6 py-4">Rata-rata Durasi <i class="fa-regular fa-clock ml-1"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabel-analytics" class="text-sm font-medium text-gray-700 divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW: LAPORAN BULANAN ================= -->
+            <div id="view-report" class="hidden animate-fade-in max-w-7xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center flex flex-col items-center justify-center min-h-[60vh]">
+                    <div class="w-24 h-24 bg-blue-50 text-brand-blue rounded-full flex items-center justify-center text-4xl mb-6">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-brand-navy mb-2">Generate Laporan Bulan Ini</h2>
+                    <p class="text-gray-500 max-w-md mb-8">Rekapitulasi jumlah berita masuk, diterima, ditolak, dan di-publish untuk bulan ini akan di-ekspor dalam format terstruktur.</p>
+                    <button onclick="alert('Fitur Export PDF/Excel sedang disiapkan di tahap integrasi selanjutnya!')" class="bg-gradient-to-r from-blue-600 to-brand-navy text-white px-8 py-3.5 rounded-full text-sm font-bold shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i> Ekspor Laporan
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ================= MODAL SETTING EXPRESS CONTRACT ================= -->
+    <div id="modal-express" class="fixed inset-0 bg-brand-navy/70 z-[70] hidden flex-col items-center justify-center p-4 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="modal-express-content">
+            <div class="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-orange-50 to-amber-50">
+                <h3 class="font-extrabold text-orange-600 text-lg flex items-center gap-2"><i class="fa-solid fa-bolt"></i> Setup Kontrak Express</h3>
+                <button onclick="closeExpressModal()" class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-gray-500 hover:text-brand-red hover:bg-red-50 shadow-sm transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="p-6 md:p-8 relative">
+                <p class="text-sm text-gray-600 font-medium mb-6">Tentukan durasi tayang untuk artikel ini. Sistem akan otomatis me-nonaktifkan artikel jika waktu kontrak sudah habis.</p>
+                
+                <div class="mb-4">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Pilih Durasi Cepat</label>
+                    <div class="grid grid-cols-4 gap-3 mb-4">
+                        <button type="button" onclick="setExpressDuration(1)" id="btn-dur-1" class="dur-btn py-2 border-2 border-gray-200 rounded-xl font-bold text-gray-500 hover:border-orange-400 hover:text-orange-500 transition shadow-sm">1 bln</button>
+                        <button type="button" onclick="setExpressDuration(3)" id="btn-dur-3" class="dur-btn py-2 border-2 border-gray-200 rounded-xl font-bold text-gray-500 hover:border-orange-400 hover:text-orange-500 transition shadow-sm">3 bln</button>
+                        <button type="button" onclick="setExpressDuration(6)" id="btn-dur-6" class="dur-btn py-2 border-2 border-gray-200 rounded-xl font-bold text-gray-500 hover:border-orange-400 hover:text-orange-500 transition shadow-sm">6 bln</button>
+                        <button type="button" onclick="setExpressDuration(12)" id="btn-dur-12" class="dur-btn py-2 border-2 border-gray-200 rounded-xl font-bold text-gray-500 hover:border-orange-400 hover:text-orange-500 transition shadow-sm">12 bln</button>
+                    </div>
+                    
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Atau Input Manual</label>
+                    <div class="flex items-center gap-3">
+                        <input type="number" id="input-express-duration" placeholder="Contoh: 2" class="w-full border-2 border-gray-200 rounded-xl text-lg font-black text-brand-navy px-4 py-3 focus:outline-none focus:border-orange-500 transition" min="1" oninput="clearBtnSelection()">
+                        <span class="font-bold text-gray-500 text-sm">Bulan</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                <button onclick="closeExpressModal()" class="px-6 py-2.5 text-sm font-bold text-gray-500 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition">Batal</button>
+                <button onclick="processExpressContract()" class="px-8 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-orange-500 to-amber-500 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2">
+                    <i class="fa-solid fa-rocket"></i> Tayangkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL EDITOR (UNTUK ADMIN REVIEW/EDIT) ================= -->
+    <div id="modal-editor" class="fixed inset-0 bg-brand-navy/80 z-[60] hidden flex-col items-center justify-center p-4 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="modal-editor-content">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="font-extrabold text-brand-navy text-lg"><i class="fa-solid fa-pen-nib mr-2 text-brand-blue"></i> Review & Edit Artikel</h3>
+                <button onclick="closeEditorModal()" class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-gray-500 hover:text-brand-red hover:bg-red-50 shadow-sm transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 md:p-10 relative">
+                <div id="modal-loading" class="absolute inset-0 bg-white/90 z-20 hidden flex-col items-center justify-center">
+                    <i class="fa-solid fa-spinner fa-spin text-4xl text-brand-blue mb-3"></i>
+                    <p class="text-sm font-bold text-brand-navy">Menyimpan perubahan...</p>
+                </div>
+                
+                <textarea id="admin-editor-title" rows="2" class="w-full text-2xl md:text-3xl font-black text-brand-navy bg-transparent border-none focus:ring-0 focus:outline-none mb-6 resize-none"></textarea>
+                <div class="mb-8">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Kategori Berita</label>
+                    <select id="admin-editor-category" class="w-full md:w-64 border border-gray-200 rounded-lg text-sm font-bold text-brand-navy px-4 py-2 focus:outline-none focus:border-brand-blue">
+                        <option>Nasional</option> 
+                        <option>Politik</option> 
+                        <option>Bisnis</option>
+                        <option>Pendidikan</option> 
+                        <option>Regional</option> 
+                        <option>Olahraga</option> 
+                        <option>Kesehatan</option>
+                        <option>Sains</option> 
+                        <option>Event</option> 
+                        <option>Teknologi</option>
+                        <option>Gaya Hidup</option> 
+                        <option>Infotainment</option>
+                    </select>
+                </div>
+                <!-- Div Editor JS -->
+                <div id="admin-editorjs" class="prose max-w-none w-full border-t border-gray-100 pt-6"></div>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                <button onclick="closeEditorModal()" class="px-6 py-2.5 text-sm font-bold text-gray-500 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition">Batal</button>
+                <button onclick="saveAdminEdit()" class="px-8 py-2.5 text-sm font-bold text-white bg-brand-blue rounded-full shadow-md hover:bg-blue-600 transition flex items-center gap-2">
+                    <i class="fa-solid fa-save"></i> Simpan Perubahan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CDN SUPABASE & EDITOR.JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@1.9.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/image@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.6.0"></script>
+
+    <script>
+        const supabaseUrl = 'https://lwarirhieajoobyggbmp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3YXJpcmhpZWFqb29ieWdnYm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NTA0MzEsImV4cCI6MjEwMzMyNjQzMX0.IoSGlQbRwK-BaW6lfhGh2YzONXl4pCG0EjgehOnsmiQ';
+        const cloudflareWorkerUrl = 'https://channelnesia-upload.navazan-official.workers.dev/';
+        
+        let supabaseClient;
+        let adminEditorInstance;
+        let editingArticleId = null;
+        let chartInstance = null; 
+        
+        // GLOBAL DATA STATE
+        let pendingExpressId = null;
+        let currentDataLive = []; // Menyimpan data master Live untuk keperluan search & filter
+        
+        if (window.supabase) {
+            supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        }
+
+        // ================= 1. INISIALISASI & PROTEKSI HALAMAN =================
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            
+            if (!session) {
+                window.location.replace("index.html");
+                return;
+            }
+
+            const { data: isAdmin, error } = await supabaseClient
+                .from('admin_users')
+                .select('user_id')
+                .eq('user_id', session.user.id)
+                .single();
+
+            if (error || !isAdmin) {
+                alert("Akses Ditolak! Anda bukan Pimpinan Redaksi.");
+                await supabaseClient.auth.signOut();
+                window.location.replace("index.html"); 
+                return;
+            }
+
+            const displayName = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+            const nameEl = document.getElementById('sidebar-user-name');
+            if(nameEl) nameEl.innerText = displayName;
+
+            loadAdminTable(); 
+            updateTime();
+            setInterval(updateTime, 1000);
+        });
+
+        async function handleLogout() {
+            await supabaseClient.auth.signOut();
+            window.location.replace("index.html");
+        }
+
+        // ================= 2. LOGIKA UI TABS =================
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        function switchMenu(menuName) {
+            const views = ['beranda', 'pengajuan', 'artikel', 'analytics', 'report'];
+            if(window.innerWidth < 768) toggleSidebar();
+
+            const activeClasses = ['bg-brand-blue', 'text-white', 'shadow-md'];
+            const inactiveClasses = ['text-gray-400', 'hover:bg-white/10', 'hover:text-white'];
+
+            views.forEach(v => {
+                const viewEl = document.getElementById('view-' + v);
+                const btnEl = document.getElementById('menu-' + v);
+                if(viewEl) viewEl.classList.add('hidden');
+                if(btnEl) {
+                    btnEl.classList.remove(...activeClasses);
+                    btnEl.classList.add(...inactiveClasses);
+                }
+            });
+
+            document.getElementById('view-' + menuName).classList.remove('hidden');
+            document.getElementById('menu-' + menuName).classList.add(...activeClasses);
+            document.getElementById('menu-' + menuName).classList.remove(...inactiveClasses);
+
+            const titleMap = {
+                'beranda': 'Dashboard Redaksi',
+                'pengajuan': 'Antrean Pengajuan Berita',
+                'artikel': 'Database Artikel Live',
+                'analytics': 'Analytics & Viewers',
+                'report': 'Laporan Bulanan'
+            };
+            document.getElementById('topbar-title').innerText = titleMap[menuName];
+
+            if (['beranda', 'pengajuan', 'artikel', 'analytics'].includes(menuName)) {
+                loadAdminTable();
+            }
+        }
+
+        // ================= 3. FETCH DATA & PISAHKAN TABEL =================
+        async function loadAdminTable() {
+            const tbodyPengajuan = document.getElementById('tabel-admin-pengajuan');
+            const tbodyAnalytics = document.getElementById('tabel-analytics');
+            
+            if(tbodyPengajuan) tbodyPengajuan.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i>Memuat data...</td></tr>`;
+
+            const { data, error } = await supabaseClient
+                .from('berita')
+                .select('*')
+                .order('updated_at', { ascending: false, nullsFirst: false })
+                .order('created_at', { ascending: false });
+
+            if (error || !data) return;
+
+            const adminData = data.filter(d => d.status !== 'draft');
+            const dataPengajuan = adminData.filter(d => d.status !== 'publish');
+            
+            // Simpan Data Live ke global variabel
+            currentDataLive = adminData.filter(d => d.status === 'publish');
+
+            const pendingCount = dataPengajuan.filter(d => d.status === 'pending').length;
+            const badge = document.getElementById('badge-pengajuan');
+            if(pendingCount > 0) {
+                badge.innerText = pendingCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            let expiringCount = 0;
+            currentDataLive.forEach(item => {
+                if (item.article_type === 'express' && item.expired_at) {
+                    const diffDays = Math.ceil((new Date(item.expired_at) - new Date()) / (1000 * 60 * 60 * 24));
+                    if(diffDays <= 7) expiringCount++;
+                }
+            });
+            const badgeExp = document.getElementById('badge-expired');
+            if(expiringCount > 0) {
+                badgeExp.innerText = expiringCount;
+                badgeExp.classList.remove('hidden');
+            } else {
+                badgeExp.classList.add('hidden');
+            }
+
+            document.getElementById('stat-wait').innerText = pendingCount;
+            document.getElementById('stat-acc').innerText = dataPengajuan.filter(d => d.status === 'diterima').length;
+            document.getElementById('stat-pub').innerText = currentDataLive.length;
+            document.getElementById('stat-rej').innerText = dataPengajuan.filter(d => d.status === 'ditolak').length;
+
+            renderCategoryChart(currentDataLive);
+
+            // RENDER TABEL PENGAJUAN
+            tbodyPengajuan.innerHTML = '';
+            if (dataPengajuan.length === 0) {
+                tbodyPengajuan.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Tidak ada antrean pengajuan saat ini.</td></tr>`;
+            } else {
+                dataPengajuan.forEach(item => {
+                    const dateObj = new Date(item.updated_at || item.created_at);
+                    const tgl = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth()+1).toString().padStart(2, '0')} ${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
+
+                    let rowBg = 'hover:bg-gray-50';
+                    if(item.status === 'pending') rowBg = 'bg-yellow-50/30 hover:bg-yellow-50';
+                    else if(item.status === 'ditolak') rowBg = 'bg-red-50/30 hover:bg-red-50';
+
+                    const statusSelect = `
+                        <select onchange="changeStatus('${item.id}', this.value)" class="border border-gray-200 rounded-md text-xs font-bold px-2 py-1.5 focus:outline-none cursor-pointer ${item.status === 'pending' ? 'text-yellow-600 bg-yellow-50' : item.status === 'ditolak' ? 'text-red-600 bg-red-50' : 'text-blue-600 bg-blue-50'}">
+                            <option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Menunggu</option>
+                            <option value="diterima" ${item.status === 'diterima' ? 'selected' : ''}>Diterima</option>
+                            <option value="publish">🚀 TAYANGKAN (Regular)</option>
+                            <option value="express" class="font-bold text-orange-600">⚡ TAYANGKAN (Express)</option>
+                            <option value="ditolak" ${item.status === 'ditolak' ? 'selected' : ''}>Ditolak</option>
+                        </select>
+                    `;
+
+                    let articleBadge = item.article_type === 'express' ? `<span class="bg-orange-100 text-orange-600 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ml-2">Express</span>` : '';
+
+                    const tr = document.createElement('tr');
+                    tr.className = `${rowBg} transition-colors border-b border-gray-50`;
+                    tr.innerHTML = `
+                        <td class="px-6 py-4"><div class="flex items-center gap-3">${item.thumbnail_url ? `<img src="${item.thumbnail_url}" class="w-10 h-10 object-cover rounded">` : `<div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center"><i class="fa-regular fa-image text-gray-300"></i></div>`}<div><p class="font-bold text-brand-navy line-clamp-1 max-w-[200px]">${item.title} ${articleBadge}</p><p class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">${item.category}</p></div></div></td>
+                        <td class="px-6 py-4 text-xs font-semibold text-gray-500 truncate max-w-[120px]" title="${item.author_id}">${item.author_id.substring(0,8)}...</td>
+                        <td class="px-6 py-4 text-xs font-semibold text-gray-500">${tgl}</td>
+                        <td class="px-6 py-4">${statusSelect}</td>
+                        <td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2"><button onclick="openAdminEditor('${item.id}')" class="bg-blue-50 text-brand-blue hover:bg-blue-100 w-8 h-8 rounded-lg flex items-center justify-center transition"><i class="fa-solid fa-pen-to-square"></i></button><button onclick="deleteArticle('${item.id}')" class="bg-red-50 text-brand-red hover:bg-red-100 w-8 h-8 rounded-lg flex items-center justify-center transition"><i class="fa-solid fa-trash"></i></button></div></td>
+                    `;
+                    tbodyPengajuan.appendChild(tr);
+                });
+            }
+
+            // PANGGIL FUNGSI RENDER TABEL LIVE 
+            renderLiveTable();
+
+            // RENDER TABEL ANALYTICS
+            if(tbodyAnalytics) {
+                const rankedData = [...currentDataLive].sort((a, b) => (b.views || 0) - (a.views || 0));
+                tbodyAnalytics.innerHTML = '';
+                if(rankedData.length === 0){
+                    tbodyAnalytics.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Belum ada data analytics dari artikel tayang.</td></tr>`;
+                }
+                
+                rankedData.forEach((item, index) => {
+                    let rankBadge = `<span class="font-black text-gray-400 text-lg">#${index + 1}</span>`;
+                    if(index === 0) rankBadge = `<span class="font-black text-yellow-500 text-xl"><i class="fa-solid fa-trophy mr-1"></i> 1</span>`;
+                    else if(index === 1) rankBadge = `<span class="font-black text-gray-400 text-lg">#2</span>`;
+                    else if(index === 2) rankBadge = `<span class="font-black text-orange-400 text-lg">#3</span>`;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50 transition-colors border-b border-gray-50';
+                    tr.innerHTML = `
+                        <td class="px-6 py-4">${rankBadge}</td>
+                        <td class="px-6 py-4 font-bold text-brand-navy max-w-xs truncate">${item.title}</td>
+                        <td class="px-6 py-4"><span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded font-bold uppercase tracking-widest">${item.category}</span></td>
+                        <td class="px-6 py-4 font-black text-brand-blue">${(item.views || 0).toLocaleString('id-ID')}</td>
+                        <td class="px-6 py-4 font-semibold text-gray-500">${item.avg_read_time || '0 Menit'}</td>
+                    `;
+                    tbodyAnalytics.appendChild(tr);
+                });
+            }
+        }
+
+        // ================= FUNGSI KHUSUS RENDER & FILTER TABEL LIVE =================
+        function filterLiveTable() {
+            renderLiveTable();
+        }
+
+        function renderLiveTable() {
+            const tbodyArtikelLive = document.getElementById('tabel-artikel-live');
+            if(!tbodyArtikelLive) return;
+
+            const searchEl = document.getElementById('search-live');
+            const filterEl = document.getElementById('filter-type-live');
+            
+            const searchQuery = searchEl ? searchEl.value.toLowerCase() : '';
+            const filterType = filterEl ? filterEl.value : 'all';
+
+            // Filter data berdasarkan text pencarian dan tipe artikel
+            const filteredData = currentDataLive.filter(item => {
+                const matchSearch = item.title.toLowerCase().includes(searchQuery);
+                let matchType = true;
+                
+                if (filterType === 'regular') {
+                    matchType = item.article_type === 'regular' || item.article_type === 'reguler' || !item.article_type;
+                } else if (filterType === 'express') {
+                    matchType = item.article_type === 'express';
+                }
+                
+                return matchSearch && matchType;
+            });
+
+            tbodyArtikelLive.innerHTML = '';
+            
+            if(filteredData.length === 0){
+                tbodyArtikelLive.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">Tidak ada artikel yang sesuai dengan pencarian atau filter.</td></tr>`;
+            } else {
+                filteredData.forEach(item => {
+                    const dateObj = new Date(item.updated_at || item.created_at);
+                    const tgl = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth()+1).toString().padStart(2, '0')} ${dateObj.getFullYear()}`;
+
+                    const isExpress = item.article_type === 'express';
+                    
+                    // Kolom Jenis
+                    let badgeType = `<span class="bg-gray-100 text-gray-500 text-[10px] px-3 py-1.5 rounded-full font-bold uppercase tracking-widest border border-gray-200">Regular</span>`;
+                    let expiredInfo = '';
+
+                    if (isExpress) {
+                        badgeType = `<span class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-3 py-1.5 rounded-full shadow-sm font-bold uppercase tracking-widest"><i class="fa-solid fa-bolt mr-1"></i> Express</span>`;
+                        
+                        if (item.expired_at) {
+                            const expDate = new Date(item.expired_at);
+                            const today = new Date();
+                            const diffTime = expDate - today;
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays < 0) {
+                                expiredInfo = `<p class="text-[10px] font-bold text-red-500 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> KEDALUWARSA (${Math.abs(diffDays)} hr lalu)</p>`;
+                            } else if (diffDays <= 7) {
+                                expiredInfo = `<p class="text-[10px] font-bold text-orange-500 mt-1"><i class="fa-solid fa-clock"></i> Sisa Waktu: ${diffDays} Hari</p>`;
+                            } else {
+                                expiredInfo = `<p class="text-[10px] font-bold text-green-600 mt-1"><i class="fa-solid fa-clock"></i> Sisa Waktu: ${diffDays} Hari</p>`;
+                            }
+                        }
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = `hover:bg-green-50/50 transition-colors border-b border-gray-50`;
+                    tr.innerHTML = `
+                        <td class="px-6 py-4"><div class="flex items-center gap-3">${item.thumbnail_url ? `<img src="${item.thumbnail_url}" class="w-10 h-10 object-cover rounded">` : `<div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center"><i class="fa-regular fa-image text-gray-300"></i></div>`}<div><p class="font-bold text-brand-navy line-clamp-1 max-w-[220px]">${item.title}</p>${expiredInfo}</div></div></td>
+                        <td class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">${item.category}</td>
+                        <td class="px-6 py-4">${badgeType}</td>
+                        <td class="px-6 py-4 text-xs font-semibold text-gray-500">${tgl}</td>
+                        <td class="px-6 py-4 text-center"><span class="bg-green-100 text-green-700 text-[10px] px-3 py-1 rounded-full font-bold uppercase"><i class="fa-solid fa-globe mr-1"></i> Live</span></td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button onclick="openAdminEditor('${item.id}')" class="bg-blue-50 text-brand-blue hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5"><i class="fa-solid fa-pen"></i> Edit</button>
+                                <button onclick="changeStatus('${item.id}', 'pending')" class="bg-yellow-50 text-yellow-600 hover:bg-yellow-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5" title="Turunkan Artikel"><i class="fa-solid fa-arrow-down"></i> Takedown</button>
+                            </div>
+                        </td>
+                    `;
+                    tbodyArtikelLive.appendChild(tr);
+                });
+            }
+        }
+
+        // ================= 4. FUNGSI UBAH STATUS & DATABASE EXECUTE =================
+        async function executeStatusUpdate(id, payload, isExpress = false) {
+            try {
+                const { error } = await supabaseClient
+                    .from('berita')
+                    .update(payload)
+                    .eq('id', id);
+
+                if (error) throw error;
+                if(isExpress) alert("Berhasil! Artikel Express telah ditayangkan dan dikunci dari penulis.");
+                
+                // Clear search and fetch fresh data
+                const searchEl = document.getElementById('search-live');
+                if(searchEl) searchEl.value = '';
+                
+                loadAdminTable();
+            } catch (err) {
+                alert("Gagal mengubah status: " + err.message);
+                loadAdminTable(); 
+            }
+        }
+
+        async function changeStatus(id, newStatus) {
+            let updatePayload = { status: newStatus, updated_at: new Date().toISOString() };
+            const now = new Date();
+
+            if (newStatus === 'publish') {
+                if(!confirm("Yakin ingin menayangkan (PUBLISH) artikel REGULER ini ke publik?")) return loadAdminTable();
+                updatePayload.article_type = 'regular';
+                updatePayload.published_at = now.toISOString();
+                updatePayload.is_locked = false; 
+                await executeStatusUpdate(id, updatePayload);
+            } 
+            else if (newStatus === 'pending') {
+                if(!confirm("Yakin ingin menurunkan (TAKEDOWN) artikel ini dari publik?")) return loadAdminTable();
+                await executeStatusUpdate(id, updatePayload);
+            } 
+            else if (newStatus === 'express') {
+                pendingExpressId = id;
+                openExpressModal();
+            }
+            else {
+                await executeStatusUpdate(id, updatePayload);
+            }
+        }
+
+        // ================= CUSTOM MODAL EXPRESS LOGIC =================
+        function openExpressModal() {
+            const modal = document.getElementById('modal-express');
+            const modalContent = document.getElementById('modal-express-content');
+            
+            document.getElementById('input-express-duration').value = '';
+            clearBtnSelection();
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeExpressModal() {
+            const modal = document.getElementById('modal-express');
+            const modalContent = document.getElementById('modal-express-content');
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                pendingExpressId = null;
+                loadAdminTable(); 
+            }, 300);
+        }
+
+        function clearBtnSelection() {
+            document.querySelectorAll('.dur-btn').forEach(btn => {
+                btn.classList.remove('border-orange-400', 'text-orange-500', 'bg-orange-50', 'ring-2', 'ring-orange-200');
+                btn.classList.add('border-gray-200', 'text-gray-500');
+            });
+        }
+
+        function setExpressDuration(months) {
+            document.getElementById('input-express-duration').value = months;
+            clearBtnSelection();
+            const activeBtn = document.getElementById(`btn-dur-${months}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('border-gray-200', 'text-gray-500');
+                activeBtn.classList.add('border-orange-400', 'text-orange-500', 'bg-orange-50', 'ring-2', 'ring-orange-200');
+            }
+        }
+
+        async function processExpressContract() {
+            if (!pendingExpressId) return;
+            
+            const durasi = document.getElementById('input-express-duration').value;
+            const months = parseInt(durasi);
+            
+            if (isNaN(months) || months <= 0) {
+                alert("Harap pilih atau ketik durasi kontrak yang valid!");
+                return;
+            }
+
+            const now = new Date();
+            const expiredDate = new Date(now);
+            expiredDate.setMonth(expiredDate.getMonth() + months);
+
+            const updatePayload = {
+                status: 'publish',
+                article_type: 'express',
+                published_at: now.toISOString(),
+                expired_at: expiredDate.toISOString(),
+                is_locked: true,
+                updated_at: now.toISOString()
+            };
+
+            closeExpressModal();
+            await executeStatusUpdate(pendingExpressId, updatePayload, true);
+        }
+
+        // ================= 5. FUNGSI HAPUS =================
+        async function deleteArticle(id) {
+            if(!confirm("PERINGATAN ADMIN: Yakin ingin menghapus berita ini secara permanen?")) return;
+            try {
+                const { error } = await supabaseClient.from('berita').delete().eq('id', id);
+                if (error) throw error;
+                loadAdminTable(); 
+            } catch (err) {
+                alert("Gagal menghapus: " + err.message);
+            }
+        }
+
+        // ================= 6. CHART.JS LOGIC =================
+        function renderCategoryChart(dataLive) {
+            const ctx = document.getElementById('categoryChart');
+            if(!ctx) return;
+
+            const catCounts = {};
+            dataLive.forEach(item => {
+                const cat = item.category || 'Lainnya';
+                catCounts[cat] = (catCounts[cat] || 0) + 1;
+            });
+
+            if (chartInstance) chartInstance.destroy(); 
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(catCounts).length > 0 ? Object.keys(catCounts) : ['Belum Ada Data'],
+                    datasets: [{
+                        data: Object.values(catCounts).length > 0 ? Object.values(catCounts) : [1],
+                        backgroundColor: Object.values(catCounts).length > 0 ? ['#1a1b4b', '#0ea5e9', '#e63946', '#f59e0b', '#10b981', '#8b5cf6', '#6366f1'] : ['#e5e7eb'],
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { font: { family: 'Montserrat' } } }
+                    }
+                }
+            });
+        }
+
+        // ================= 7. MODAL EDITOR UNTUK ADMIN =================
+        async function openAdminEditor(id) {
+            const modal = document.getElementById('modal-editor');
+            const modalContent = document.getElementById('modal-editor-content');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+
+            try {
+                const { data, error } = await supabaseClient.from('berita').select('*').eq('id', id).single();
+                if (error) throw error;
+
+                editingArticleId = data.id;
+                document.getElementById('admin-editor-title').value = data.title;
+                document.getElementById('admin-editor-category').value = data.category;
+
+                if (adminEditorInstance) {
+                    try { adminEditorInstance.destroy(); } catch(e){}
+                    document.getElementById('admin-editorjs').innerHTML = '';
+                }
+
+                adminEditorInstance = new EditorJS({
+                    holder: 'admin-editorjs',
+                    data: data.content,
+                    tools: {
+                        header: { class: Header, inlineToolbar: true, config: { levels: [2, 3], defaultLevel: 2 } },
+                        list: { class: List, inlineToolbar: true },
+                        quote: { class: Quote, inlineToolbar: true },
+                        image: {
+                            class: ImageTool,
+                            config: {
+                                uploader: {
+                                    uploadByFile(file) {
+                                        return new Promise((resolve, reject) => {
+                                            const formData = new FormData();
+                                            formData.append('image', file);
+                                            fetch(cloudflareWorkerUrl, { method: 'POST', body: formData })
+                                            .then(r => r.json())
+                                            .then(d => {
+                                                if(d.success === 1) resolve({success: 1, file: {url: d.file.url}});
+                                                else reject(new Error(d.message));
+                                            }).catch(reject);
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (err) {
+                alert("Gagal memuat editor: " + err.message);
+                closeEditorModal();
+            }
+        }
+
+        function closeEditorModal() {
+            const modal = document.getElementById('modal-editor');
+            const modalContent = document.getElementById('modal-editor-content');
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                editingArticleId = null;
+                if(adminEditorInstance) {
+                    try{ adminEditorInstance.destroy(); } catch(e){}
+                    adminEditorInstance = null;
+                }
+            }, 300);
+        }
+
+        async function saveAdminEdit() {
+            if(!adminEditorInstance || !editingArticleId) return;
+
+            document.getElementById('modal-loading').classList.remove('hidden');
+            document.getElementById('modal-loading').classList.add('flex');
+
+            try {
+                const outputData = await adminEditorInstance.save();
+                const newTitle = document.getElementById('admin-editor-title').value;
+                const newCategory = document.getElementById('admin-editor-category').value;
+
+                const { error } = await supabaseClient
+                    .from('berita')
+                    .update({
+                        title: newTitle,
+                        category: newCategory,
+                        content: outputData,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', editingArticleId);
+
+                if (error) throw error;
+                
+                alert("Perubahan berhasil disimpan!");
+                closeEditorModal();
+                loadAdminTable(); 
+
+            } catch (err) {
+                alert("Gagal menyimpan: " + err.message);
+            } finally {
+                document.getElementById('modal-loading').classList.add('hidden');
+                document.getElementById('modal-loading').classList.remove('flex');
+            }
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateElem = document.getElementById('current-date');
+            if(dateElem) dateElem.innerText = `${now.toLocaleDateString('id-ID', dateOptions)} | ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':')} WIB`;
+        }
+    </script>
+</body>
+</html>

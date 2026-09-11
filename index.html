@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Admin | Channelnesia</title>
+    
+    <!-- Google Font Montserrat -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CDN Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { navy: '#1a1b4b', blue: '#0ea5e9', red: '#e63946', gray: '#f3f4f6' }
+                    },
+                    fontFamily: {
+                        'sans': ['"Montserrat"', 'sans-serif'],
+                        'logo': ['"Montserrat"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-image: radial-gradient(circle at top right, #0ea5e9 0%, #1a1b4b 40%, #0a0a1a 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .input-glass {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .input-glass:focus {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: #0ea5e9;
+            box-shadow: 0 0 10px rgba(14, 165, 233, 0.3);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 font-sans text-white overflow-hidden relative">
+
+    <!-- Ornamen 3D / Cahaya Latar -->
+    <div class="absolute top-20 left-20 w-64 h-64 bg-brand-blue rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse"></div>
+    <div class="absolute bottom-10 right-20 w-72 h-72 bg-brand-red rounded-full mix-blend-screen filter blur-[120px] opacity-30"></div>
+
+    <div class="w-full max-w-md relative z-10">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="text-4xl font-logo tracking-tighter leading-none mb-2 drop-shadow-lg">
+                <span class="font-medium text-white">CH</span><span class="font-black bg-gradient-to-r from-[#0ea5e9] to-[#e63946] bg-clip-text text-transparent tracking-tight">ADMIN.</span>
+            </div>
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Portal Redaksi Utama</p>
+        </div>
+
+        <!-- Form Login Glassmorphism -->
+        <div class="glass-card rounded-3xl p-8 shadow-2xl">
+            <h2 class="text-2xl font-extrabold mb-1">Selamat Datang</h2>
+            <p class="text-sm text-gray-400 mb-8">Otorisasi sistem khusus Pimpinan Redaksi.</p>
+
+            <!-- Pesan Error Dinamis -->
+            <div id="error-box" class="hidden mb-6 bg-red-500/20 border border-red-500/50 text-red-200 text-xs font-bold p-3 rounded-lg flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="error-text">Email atau password salah!</span>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-5">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Email Resmi</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="email" id="email" required placeholder="admin@channelnesia.com" class="input-glass w-full py-3.5 pl-11 pr-4 rounded-xl text-sm placeholder-gray-500">
+                    </div>
+                </div>
+                
+                <div class="mb-8">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Kata Sandi</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="password" id="password" required placeholder="••••••••" class="input-glass w-full py-3.5 pl-11 pr-4 rounded-xl text-sm placeholder-gray-500">
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-login" class="w-full bg-gradient-to-r from-blue-600 to-brand-navy hover:from-blue-500 hover:to-blue-800 text-white font-bold py-3.5 rounded-xl shadow-[0_0_15px_rgba(14,165,233,0.4)] hover:shadow-[0_0_25px_rgba(14,165,233,0.6)] transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem
+                </button>
+            </form>
+        </div>
+        
+        <p class="text-center text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-8">
+            <i class="fa-solid fa-shield-halved mr-1"></i> Secured by Supabase Auth
+        </p>
+    </div>
+
+    <script>
+        // ================= INISIALISASI SUPABASE =================
+        const supabaseUrl = 'https://lwarirhieajoobyggbmp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3YXJpcmhpZWFqb29ieWdnYm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NTA0MzEsImV4cCI6MjEwMzMyNjQzMX0.IoSGlQbRwK-BaW6lfhGh2YzONXl4pCG0EjgehOnsmiQ';
+        let supabaseClient;
+        
+        if (window.supabase) {
+            supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        }
+
+        // ================= CEK SESI (JIKA SUDAH LOGIN) =================
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            
+            // Kalau dia udah ada sesi, cek apakah dia admin. Kalau iya, langsung lempar ke admin.html
+            if (session) {
+                const { data: isAdmin } = await supabaseClient
+                    .from('admin_users')
+                    .select('user_id')
+                    .eq('user_id', session.user.id)
+                    .single();
+
+                if (isAdmin) {
+                    window.location.replace("admin.html");
+                } else {
+                    // Kalau ternyata jurnalis kesasar dan udah login, kita sign out paksa
+                    await supabaseClient.auth.signOut();
+                }
+            }
+        });
+
+        // ================= PROSES LOGIN =================
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('btn-login');
+            const errorBox = document.getElementById('error-box');
+            const errorText = document.getElementById('error-text');
+
+            // Reset UI
+            errorBox.classList.add('hidden');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memverifikasi...';
+            btn.disabled = true;
+
+            try {
+                // 1. Coba Login dengan Supabase Auth
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (authError) throw new Error("Email atau kata sandi tidak valid.");
+
+                const user = authData.user;
+
+                // 2. VERIFIKASI KEAMANAN: Apakah dia terdaftar di tabel admin_users?
+                const { data: adminData, error: adminError } = await supabaseClient
+                    .from('admin_users')
+                    .select('user_id')
+                    .eq('user_id', user.id)
+                    .single();
+
+                // Jika gagal nemu di tabel admin_users
+                if (adminError || !adminData) {
+                    await supabaseClient.auth.signOut(); // Tendang keluar langsung
+                    throw new Error("Akses Ditolak! Anda bukan Pimpinan Redaksi.");
+                }
+
+                // 3. Jika sukses (Login Valid + Dia adalah Admin)
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Otorisasi Berhasil!';
+                btn.classList.replace('from-blue-600', 'from-green-500');
+                btn.classList.replace('to-brand-navy', 'to-green-700');
+                
+                setTimeout(() => {
+                    window.location.replace("admin.html"); // Pindah ke Dashboard Admin
+                }, 1000);
+
+            } catch (err) {
+                // Tampilkan pesan error
+                errorText.innerText = err.message;
+                errorBox.classList.remove('hidden');
+                
+                // Kembalikan tombol ke semula
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
